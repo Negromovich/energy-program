@@ -1,0 +1,105 @@
+<div ng-if="errors.length">
+    Во время выполнение расчета возникли следующие ошибки:
+    <ul>
+        <li ng-repeat="error in errors">{{error}}</li>
+    </ul>
+</div>
+
+<div ng-if="!errors.length">
+    <h2>Узлы</h2>
+    <table class="table table-bordered table-condensed table-hover table-striped">
+        <thead>
+        <tr>
+            <th rowspan="2">Узел</th>
+            <th colspan="3">Режим максимальных нагрузок</th>
+            <th colspan="3">Режим минимальных нагрузок</th>
+            <th rowspan="2" title="Ответвление первичной обмотки трансформатора">ПБВ</th>
+        </tr>
+        <tr>
+            <th title="Потери напряжения от ЦП до шин НН ТП в режиме максимальных нагрузок">ΔU<sup>max</sup>, В</th>
+            <th title="Потери напряжения от ЦП до шин НН ТП в режиме максимальных нагрузок">ΔU<sup>max</sup>, %</th>
+            <th title="Отклонение напряжения на шинах НН ТП в режиме максимальных нагрузок">δU<sup>max</sup>, %</th>
+            <th title="Потери напряжения от ЦП до шин НН ТП в режиме минимальных нагрузок">ΔU<sup>min</sup>, В</th>
+            <th title="Потери напряжения от ЦП до шин НН ТП в режиме минимальных нагрузок">ΔU<sup>min</sup>, %</th>
+            <th title="Отклонение напряжения на шинах НН ТП в режиме минимальных нагрузок">δU<sup>min</sup>, %</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="node in nodesTable" ng-if="node.Snom > 0">
+            <td>{{node.node}}</td>
+            <td>{{node.dUmax}}</td>
+            <td>{{node.dpUmax}}</td>
+            <td>{{node.bpUmax}}</td>
+            <td>{{node.dUmin}}</td>
+            <td>{{node.dpUmin}}</td>
+            <td>{{node.bpUmin}}</td>
+            <td>{{node.branch}}</td>
+        </tr>
+        <tr>
+            <td colspan="8">
+                <p ng-if="regimes.main.regime" class="text-center">
+                    Режим регулирования:
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span title="Отклонение напряжения в ЦП в режиме максимальных нагрузок">
+                        δU<sub>ЦП</sub><sup>max</sup></span> = {{regimes.main.regime.max}}%;
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span title="Отклонение напряжения в ЦП в режиме минимальных нагрузок">
+                        δU<sub>ЦП</sub><sup>min</sup></span> = {{regimes.main.regime.min}}%.
+                </p>
+                <strong ng-if="!regimes.main.regime">
+                    Не удалось найти режима регулирования для данной сети
+                    с возможностью выбора постоянных ответвлений трансформаторов на ТП
+                </strong>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div id="bar_chart" ng-init="barChartInit()"></div>
+    <p class="text-center">Потери напряжения от ЦП до шин НН ТП</p>
+
+    <div id="delta_chart_max" ng-init="deltaChartMaxInit()"></div>
+    <p class="text-center">Отклонение напряжения и допустимые пределы отклонения на шинах НН ТП в режиме максимальных нагрузок</p>
+
+    <div id="delta_chart_min" ng-init="deltaChartMinInit()"></div>
+    <p class="text-center">Отклонение напряжения и допустимые пределы отклонения на шинах НН ТП в режиме минимальных нагрузок</p>
+
+
+
+    <h2>Ветви</h2>
+    <table class="table table-bordered table-condensed table-hover table-striped">
+        <thead>
+        <tr>
+            <th rowspan="2">Начало</th>
+            <th rowspan="2">Конец</th>
+            <th colspan="3">Режим максимальных нагрузок</th>
+            <th colspan="3">Режим минимальных нагрузок</th>
+        </tr>
+        <tr>
+            <th>I<sup>max</sup>, А</th>
+            <th>ΔS<sup>max</sup>, кВт</th>
+            <th>ΔU<sup>max</sup>, В</th>
+            <th>I<sup>min</sup>, А</th>
+            <th>ΔS<sup>min</sup>, кВт</th>
+            <th>ΔU<sup>max</sup>, В</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="edge in edgesTable">
+            <td>{{edge.start}}</td>
+            <td>{{edge.finish}}</td>
+            <td>{{edge.Imax}}</td>
+            <td>{{edge.dSmax}}</td>
+            <td>{{edge.dUmax}}</td>
+            <td>{{edge.Imin}}</td>
+            <td>{{edge.dSmin}}</td>
+            <td>{{edge.dUmin}}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="container footer-links">
+    <a href="#/nodes" class="btn btn-lg btn-primary"><i class="glyphicon glyphicon-chevron-left"></i> Вернутся к узлам</a>
+    <a href="#/edges" class="btn btn-lg btn-primary"><i class="glyphicon glyphicon-chevron-left"></i> Вернутся к ветвям</a>
+</div>

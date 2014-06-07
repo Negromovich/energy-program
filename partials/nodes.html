@@ -1,0 +1,118 @@
+<h1>Узлы сети</h1>
+
+<form name="nodeForm">
+    <table class="table table-bordered table-condensed">
+        <thead>
+        <tr>
+            <th rowspan="2" title="Центр питания">ЦП</th>
+            <th rowspan="2">Название</th>
+            <th rowspan="2">Трансформатор</th>
+            <th colspan="3">Режим максимальных нагрузок</th>
+            <th colspan="3">Режим минимальных нагрузок</th>
+            <th rowspan="2"></th>
+        </tr>
+        <tr>
+            <th title="Активная нагрузка в узле на стороне НН в режиме максимальный нагрузок">P<sub>нагр</sub>, кВт</th>
+            <th title="Реактивная нагрузка в узле на стороне НН в режиме максимальный нагрузок">Q<sub>нагр</sub>, квар</th>
+            <th title="Потери напряжения до удаленного потребителя в режиме максимальный нагрузок">ΔU<sub>нн.у</sub>, %</th>
+            <th title="Активная нагрузка в узле на стороне НН в режиме минимальных нагрузок">P<sub>нагр</sub>, кВт</th>
+            <th title="Реактивная нагрузка в узле на стороне НН в режиме минимальных нагрузок">Q<sub>нагр</sub>, квар</th>
+            <th title="Потери напряжения до удаленного потребителя в режиме минимальных нагрузок">ΔU<sub>нн.у</sub>, %</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="node in nodes">
+            <td><input type="radio" name="main" ng-value="true" ng-model="node.main" ng-change="updateMainNode(node)" required></td>
+            <td><input type="text" name="node" ng-model="node.node" required></td>
+            <td><select ng-if="!node.main" name="transformer" ng-model="node.transformer"
+                    ng-options="transformer.type as transformer.type for transformer in transformers"
+                    ng-change="updateTransformer(node)"
+                    ></select></td>
+            <td><input ng-if="!node.main && node.transformer" type="text" name="Pmax" ng-model="node.Pmax"></td>
+            <td><input ng-if="!node.main && node.transformer" type="text" name="Qman" ng-model="node.Qmax"></td>
+            <td><input ng-if="!node.main && node.transformer" type="text" name="dUmax" ng-model="node.dUmax"></td>
+            <td><input ng-if="!node.main && node.transformer" type="text" name="Pmin" ng-model="node.Pmin"></td>
+            <td><input ng-if="!node.main && node.transformer" type="text" name="Qmin" ng-model="node.Qmin"></td>
+            <td><input ng-if="!node.main && node.transformer" type="text" name="dUmin" ng-model="node.dUmin"></td>
+            <td><button class="btn btn-danger btn-xs" ng-click="removeNode(node)"><i class="glyphicon glyphicon-remove"></i></button></td>
+        </tr>
+        </tbody>
+    </table>
+</form>
+
+<button class="btn btn-block btn-primary" ng-click="addNodeEmpty()">Добавить узел</button>
+
+<div class="row">
+    <div class="col-lg-6">
+        <form name="paramsForm">
+            <h3>Задание нагрузки через ток ЦП</h3>
+            <table class="table">
+                <tr>
+                    <th>I<sub>ЦП</sub><sup>max</sup>, А</th>
+                    <th>I<sub>ЦП</sub><sup>min</sup>, А</th>
+                    <th>cosφ</th>
+                </tr>
+                <tr>
+                    <td><input type="number" step="0.01" name="Imax" ng-model="params.Imax" required></td>
+                    <td><input type="number" step="0.01" name="Imin" ng-model="params.Imin" required></td>
+                    <td><input type="number" step="0.01" name="cos" ng-model="params.cosPhi" required></td>
+                </tr>
+                <tr>
+                    <td colspan="3"><button class="btn btn-block btn-xs btn-info" ng-click="setMainParams(params)">Задать мощности через ток ЦП</button></td>
+                </tr>
+            </table>
+        </form>
+    </div>
+
+    <div class="col-lg-6">
+        <form name="paramsSHN">
+            <h3>Статические характеристики нагрузки</h3>
+            <table class="table">
+                <tr>
+                    <th></th>
+                    <th>a<sub>0</sub></th>
+                    <th>a<sub>1</sub></th>
+                    <th>a<sub>2</sub></th>
+                    <th>a<sub>3</sub></th>
+                </tr>
+                <tr>
+                    <td>P</td>
+                    <td><input type="number" step="0.01" name="a0" ng-model="SHN.a0" required></td>
+                    <td><input type="number" step="0.01" name="a1" ng-model="SHN.a1" required></td>
+                    <td><input type="number" step="0.01" name="a2" ng-model="SHN.a2" required></td>
+                    <td><input type="number" step="0.01" name="a3" ng-model="SHN.a3" required></td>
+                </tr>
+                <tr>
+                    <td>Q</td>
+                    <td><input type="number" step="0.01" name="b0" ng-model="SHN.b0" required></td>
+                    <td><input type="number" step="0.01" name="b1" ng-model="SHN.b1" required></td>
+                    <td><input type="number" step="0.01" name="b2" ng-model="SHN.b2" required></td>
+                    <td><input type="number" step="0.01" name="b3" ng-model="SHN.b3" required></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td colspan="2"><button class="btn btn-xs btn-block" ng-click="clearSHN()">Очистить</button></td>
+                    <td colspan="2"><button class="btn btn-xs btn-block" ng-click="defaultSHN()">По умолчанию</button></td>
+                </tr>
+            </table>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <h3>Импорт и экспорт конфигурации сети</h3>
+    <div class="col-sm-6">
+        <div>Выберите файл для импорта</div>
+        <div><input type="file" fileread="file"></div>
+        <div><button class="btn btn-block btn-info" ng-click="importData()">Импорт</button></div>
+    </div>
+    <div class="col-sm-6">
+        <div>&nbsp;</div>
+        <div>&nbsp;</div>
+        <div><button class="btn btn-block btn-info" ng-click="exportData()">Экспорт данных</button></div>
+    </div>
+</div>
+
+<div class="container footer-links">
+    <a href="#/edges" class="btn btn-lg btn-primary">Перейти к ветвям <i class="glyphicon glyphicon-chevron-right"></i></a>
+</div>

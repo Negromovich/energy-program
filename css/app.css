@@ -1,0 +1,9 @@
+input { width: 100%; }
+footer { display: block; min-height: 50px; }
+.footer-links { text-align: center; margin-top: 50px; }
+.footer-links > * { margin-left: 10px; margin-right: 10px; }
+.container { min-width: 840px; }
+
+.canvas { position: relative; }
+.connector { background-color: #000; }
+.block { border: 1px solid #000; padding: 3px 5px; }

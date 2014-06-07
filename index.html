@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru" ng-app="energy">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Energy</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="js/libs/js-graph-it/js-graph-it.css" rel="stylesheet">
+    <link href="js/libs/jqplot/jquery.jqplot.min.css" rel="stylesheet">
+    <link href="css/app.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container">
+    <div class="navbar navbar-default" role="navigation">
+        <ul class="nav navbar-nav">
+            <li ng-class="{'active':currentTab=='Nodes'}"><a href="#/nodes">Узлы</a></li>
+            <li ng-class="{'active':currentTab=='Edges'}"><a href="#/edges">Ветви</a></li>
+            <li ng-class="{'active':currentTab=='Results'}"><a href="#/results">Результаты</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="container" ng-view></div>
+
+<footer></footer>
+
+<script src="js/libs/jquery-2.1.0.min.js"></script>
+<script src="js/libs/bootstrap.min.js"></script>
+<script src="js/libs/angular.min.js"></script>
+<script src="js/libs/angular-route.min.js"></script>
+
+<script src="js/app.js"></script>
+<script src="js/services.js"></script>
+<script src="js/controllers.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/directives.js"></script>
+
+<script src="js/libs/math.min.js"></script>
+<script>var math = mathjs();</script>
+<script src="js/energy.js"></script>
+<script src="js/add/functions.js"></script>
+
+<script type="text/javascript" src="js/libs/jqplot/jquery.jqplot.min.js"></script>
+<script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.barRenderer.min.js"></script>
+<script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.categoryAxisRenderer.min.js"></script>
+<script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.pointLabels.min.js"></script>
+<script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.ohlcRenderer.min.js"></script>
+<script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.highlighter.min.js"></script>
+
+
+</body>
+</html>

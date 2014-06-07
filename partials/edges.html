@@ -1,0 +1,38 @@
+<h1>Ветви сети</h1>
+
+<form name="edgeForm">
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Начало</th>
+            <th>Конец</th>
+            <th>Марка кабеля</th>
+            <th>Длина, км</th>
+            <th>R, Ом</th>
+            <th>X, Ом</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="edge in edges">
+            <td><select name="start" ng-model="edge.start" ng-options="node.node as node.node for node in nodes" required></select></td>
+            <td><select name="finish" ng-model="edge.finish" ng-options="node.node as node.node for node in nodes" required></select></td>
+            <td><select name="cable" ng-model="edge.cable"
+                        ng-options="cable.mark as cable.mark for cable in cables"
+                        ng-change="updateCable(edge)"
+                    ></select></td>
+            <td><input type="text" name="length" ng-model="edge.length" ng-change="updateCable(node)" required></td>
+            <td><input type="text" name="R" ng-model="edge.R" required></td>
+            <td><input type="text" name="X" ng-model="edge.X" required></td>
+            <td><button class="btn btn-danger btn-xs" ng-click="removeEdge(edge)"><i class="glyphicon glyphicon-remove"></i></button></td>
+        </tr>
+        </tbody>
+    </table>
+</form>
+
+<button class="btn btn-block btn-primary" ng-click="addEdgeEmpty()">Добавить ветвь</button>
+
+<div class="container footer-links">
+    <a href="#/nodes" class="btn btn-lg btn-primary"><i class="glyphicon glyphicon-chevron-left"></i> Вернутся к узлам</a>
+    <a href="#/results" class="btn btn-lg btn-primary">Перейти к результатам <i class="glyphicon glyphicon-chevron-right"></i></a>
+</div>
