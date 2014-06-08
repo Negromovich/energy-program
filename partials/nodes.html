@@ -2,7 +2,7 @@
 
 <form name="nodeForm">
     <table class="table table-bordered table-condensed">
-        <thead>
+        <thead class="text-center-children">
         <tr>
             <th rowspan="2" title="Центр питания">ЦП</th>
             <th rowspan="2">Название</th>
@@ -100,16 +100,36 @@
 </div>
 
 <div class="row">
-    <h3>Импорт и экспорт конфигурации сети</h3>
-    <div class="col-sm-6">
-        <div>Выберите файл для импорта</div>
-        <div><input type="file" fileread="file"></div>
-        <div><button class="btn btn-block btn-info" ng-click="importData()">Импорт</button></div>
+    <div class="col-lg-6">
+        <form name="losses">
+            <h3>Задание потерь напряжения до потребителей</h3>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th title="Потери напряжения до удаленного потребителя в режиме максимальный нагрузок">ΔU<sub>нн.у</sub><sup>max</sup>, %</th>
+                    <th title="Потери напряжения до удаленного потребителя в режиме минимальных нагрузок">ΔU<sub>нн.у</sub><sup>min</sup>, %</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td><input type="number" step="0.01" name="lossesMax" ng-model="losses.max"></td>
+                    <td><input type="number" step="0.01" name="lossesMin" ng-model="losses.min"></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><button class="btn btn-block btn-xs btn-info" ng-click="setLosses(losses)">Задать потери для всех узлов</button></td>
+                </tr>
+                </tbody>
+            </table>
+        </form>
     </div>
-    <div class="col-sm-6">
-        <div>&nbsp;</div>
-        <div>&nbsp;</div>
-        <div><button class="btn btn-block btn-info" ng-click="exportData()">Экспорт данных</button></div>
+    <div class="col-lg-6">
+        <h3>Импорт и экспорт конфигурации сети</h3>
+        <div class="row">
+            <div class="col-xs-6">Выберите файл для импорта</div>
+            <div class="col-xs-6"><input type="file" fileread="file"></div>
+        </div>
+        <p><button class="btn btn-block btn-info" ng-click="importData()">Импорт</button></p>
+        <p><button class="btn btn-block btn-info" ng-click="exportData()">Экспорт данных</button></p>
     </div>
 </div>
 

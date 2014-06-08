@@ -55,14 +55,6 @@ angular.module('energy.controllers', [])
             $scope.SHN.b3 = 0;
         };
         $scope.defaultSHN = function() {
-//            $scope.SHN.a0 =   0.83;
-//            $scope.SHN.a1 =  -0.3;
-//            $scope.SHN.a2 =   0.47;
-//            $scope.SHN.a3 =   0;
-//            $scope.SHN.b0 =   4.9;
-//            $scope.SHN.b1 = -10.1;
-//            $scope.SHN.b2 =   6.2;
-//            $scope.SHN.b3 =   0;
             $scope.SHN.a0 =  1;
             $scope.SHN.a1 = -0.75;
             $scope.SHN.a2 =  4.75;
@@ -71,6 +63,13 @@ angular.module('energy.controllers', [])
             $scope.SHN.b1 =  3;
             $scope.SHN.b2 =  2.2;
             $scope.SHN.b3 =  0;
+        };
+
+        $scope.setLosses = function(losses) {
+            for (var i in $scope.nodes) {
+                if (losses.max) { $scope.nodes[i].dUmax = losses.max; }
+                if (losses.min) { $scope.nodes[i].dUmin = losses.min; }
+            }
         };
 
         $scope.exportData = function() {
@@ -129,8 +128,12 @@ angular.module('energy.controllers', [])
 
             $scope.regimes = results.regimes;
             for (i in $scope.regimes) {
-                $scope.regimes[i].regime.max = math.round($scope.regimes[i].regime.max, 2);
-                $scope.regimes[i].regime.min = math.round($scope.regimes[i].regime.min, 2);
+                if ($scope.regimes[i].regime.max) {
+                    $scope.regimes[i].regime.max = math.round($scope.regimes[i].regime.max, 2);
+                }
+                if ($scope.regimes[i].regime.min) {
+                    $scope.regimes[i].regime.min = math.round($scope.regimes[i].regime.min, 2);
+                }
             }
 
             var nodesName = [];
@@ -139,12 +142,12 @@ angular.module('energy.controllers', [])
                 $scope.nodesTable.push({
                     node: nodes[i].node,
                     Snom: nodes[i].Snom,
-                    dUmax: math.round(results.max.voltageLoss[i] * 1000, 2),
-                    dUmin: math.round(results.min.voltageLoss[i] * 1000, 2),
-                    dpUmax: math.round(results.max.voltageLossPerc[i], 3),
-                    dpUmin: math.round(results.min.voltageLossPerc[i], 3),
-                    bpUmax: math.round(results.max.voltageReal[i], 3),
-                    bpUmin: math.round(results.min.voltageReal[i], 3),
+                    dUmax: results.max.network.voltage.loss[i] * 1000,
+                    dUmin: results.min.network.voltage.loss[i] * 1000,
+                    dpUmax: results.max.network.voltage.lossPercent[i],
+                    dpUmin: results.min.network.voltage.lossPercent[i],
+                    bpUmax: results.max.voltage[i],
+                    bpUmin: results.min.voltage[i],
                     branch: results.regimes.main.branches[i]
                 });
             }
@@ -172,17 +175,17 @@ angular.module('energy.controllers', [])
                 if (nodes[i].Snom > 0) {
                     $scope.deltaChart.data.max.push([
                         i,
-                        math.round(results.max.voltageReal[i] - energy.params.transformerInsensetive, 6),
+                        math.round(results.max.voltage[i] - energy.params.transformerInsensetive, 6),
                         results.voltageDown[i].max.max,
                         results.voltageDown[i].max.min,
-                        math.round(results.max.voltageReal[i] + energy.params.transformerInsensetive, 6)
+                        math.round(results.max.voltage[i] + energy.params.transformerInsensetive, 6)
                     ]);
                     $scope.deltaChart.data.min.push([
                         i,
-                        math.round(results.min.voltageReal[i] - energy.params.transformerInsensetive, 6),
+                        math.round(results.min.voltage[i] - energy.params.transformerInsensetive, 6),
                         results.voltageDown[i].min.max,
                         results.voltageDown[i].min.min,
-                        math.round(results.min.voltageReal[i] + energy.params.transformerInsensetive, 6)
+                        math.round(results.min.voltage[i] + energy.params.transformerInsensetive, 6)
                     ]);
                     $scope.deltaChart.ticks.push(nodes[i].node);
                 }
@@ -195,12 +198,12 @@ angular.module('energy.controllers', [])
                 edgeRow = {
                     start: edges[i].start,
                     finish: edges[i].finish,
-                    Imax: math.round(math.abs(results.max.network.matrixIv.toArray()[i]) * 1000, 3),
-                    Imin: math.round(math.abs(results.min.network.matrixIv.toArray()[i]) * 1000, 3),
-                    dSmax: math.round(math.abs(results.max.network.matrixSvd.toArray()[i]) * 1000, 3),
-                    dSmin: math.round(math.abs(results.min.network.matrixSvd.toArray()[i]) * 1000, 3),
-                    dUmax: math.round(math.abs(results.max.network.matrixUvd.toArray()[i]) * 1000, 1),
-                    dUmin: math.round(math.abs(results.min.network.matrixUvd.toArray()[i]) * 1000, 1)
+                    Imax: math.abs(results.max.network.matrixIv.toArray()[i]) * 1000,
+                    Imin: math.abs(results.min.network.matrixIv.toArray()[i]) * 1000,
+                    dSmax: math.abs(results.max.network.matrixSvd.toArray()[i]) * 1000,
+                    dSmin: math.abs(results.min.network.matrixSvd.toArray()[i]) * 1000,
+                    dUmax: math.abs(results.max.network.matrixUvd.toArray()[i]) * 1000,
+                    dUmin: math.abs(results.min.network.matrixUvd.toArray()[i]) * 1000
                 };
                 for (j in $scope.nodesTable) {
                     if ($scope.nodesTable[j].node == edges[i].start) {

@@ -3,8 +3,9 @@
 /* Filters */
 
 angular.module('energy.filters', []).
-  filter('interpolate', ['version', function(version) {
-    return function(text) {
-      return String(text).replace(/\%VERSION\%/mg, version);
-    };
-  }]);
+    filter('round', function($filter) {
+        return function (value, precision) {
+            precision = precision || 0;
+            return math.round(value, precision).toFixed(precision);
+        };
+    });
