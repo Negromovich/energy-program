@@ -8,15 +8,11 @@ AppControllers.inputCtrl = {};
 
 angular.module('energy.controllers', [])
 
-    .controller('Nodes', ['$scope', function($scope) {
+    .controller('Nodes', ['$scope', '$route', function($scope, $route) {
         $scope.$parent.currentTab = 'Nodes';
 
         $scope.nodes = energy.getNodes();
-        $scope.params = {
-            Imax: '',
-            Imin: '',
-            cosPhi: ''
-        };
+        $scope.params = energy.params.temp;
         $scope.transformers = [{}].concat(energy.transformers);
 
         $scope.addNodeEmpty = function () {
@@ -65,10 +61,10 @@ angular.module('energy.controllers', [])
             $scope.SHN.b3 =  0;
         };
 
-        $scope.setLosses = function(losses) {
+        $scope.setLosses = function(params) {
             for (var i in $scope.nodes) {
-                if (losses.max) { $scope.nodes[i].dUmax = losses.max; }
-                if (losses.min) { $scope.nodes[i].dUmin = losses.min; }
+                if (params.dUmax) { $scope.nodes[i].dUmax = params.dUmax; }
+                if (params.dUmin) { $scope.nodes[i].dUmin = params.dUmin; }
             }
         };
 
@@ -85,6 +81,14 @@ angular.module('energy.controllers', [])
             } else {
                 energy.importData($scope.file);
             }
+        };
+
+        $scope.importDataDiplom = function() {
+            var file = 'data/energy_data.csv';
+            jQuery.get(file, function(data) {
+                energy.importData(data);
+                $route.reload();
+            });
         };
     }])
 
@@ -114,172 +118,210 @@ angular.module('energy.controllers', [])
     .controller('Results', ['$scope', function($scope) {
         $scope.$parent.currentTab = 'Results';
 
-        var results = energy.getResults(),
-            nodes = energy.getNodes(false),
-            mainNode = energy.getMainNode(),
-            edges = energy.getEdges(),
-            i, j;
+        var results = energy.getResults();
 
         $scope.errors = energy.getErrors();
 
         if (!$scope.errors.length) {
-            $scope.nodesTable = [];
-            $scope.edgesTable = [];
+            _prepareResults(results, $scope);
+        }
+    }])
 
-            $scope.regimes = results.regimes;
-            for (i in $scope.regimes) {
-                if ($scope.regimes[i].regime.max) {
-                    $scope.regimes[i].regime.max = math.round($scope.regimes[i].regime.max, 2);
-                }
-                if ($scope.regimes[i].regime.min) {
-                    $scope.regimes[i].regime.min = math.round($scope.regimes[i].regime.min, 2);
-                }
+
+    .controller('Regime', ['$scope', '$route', function($scope, $route) {
+        $scope.$parent.currentTab = 'Regime';
+        $scope.regime = energy.params.defaultRegime;
+
+        var results = energy.calcRegime($scope.regime.max, $scope.regime.min);
+
+        _prepareResults(results, $scope);
+
+        $scope.updateRegime = function() {
+            $route.reload();
+        }
+    }]);
+
+function _prepareResults(results, $scope) {
+    var nodes = energy.getNodes(false),
+        mainNode = energy.getMainNode(),
+        edges = energy.getEdges(),
+        i, j, mode;
+
+    $scope.nodesTable = [];
+    $scope.edgesTable = [];
+
+    $scope.regimes = results.regimes;
+    for (i in $scope.regimes) {
+        for (mode in {max:NaN,min:NaN}) {
+            if ($scope.regimes[i].regime[mode]) {
+                $scope.regimes[i].regime[mode] = math.round($scope.regimes[i].regime[mode], 2);
             }
+        }
+    }
 
-            var nodesName = [];
-            for (i in nodes) {
-                nodesName.push(nodes[i].node);
-                $scope.nodesTable.push({
-                    node: nodes[i].node,
-                    Snom: nodes[i].Snom,
-                    dUmax: results.max.network.voltage.loss[i] * 1000,
-                    dUmin: results.min.network.voltage.loss[i] * 1000,
-                    dpUmax: results.max.network.voltage.lossPercent[i],
-                    dpUmin: results.min.network.voltage.lossPercent[i],
-                    bpUmax: results.max.voltage[i],
-                    bpUmin: results.min.voltage[i],
-                    branch: results.regimes.main.branches[i]
-                });
+    var nodesName = [];
+    for (i in nodes) {
+        nodesName.push(nodes[i].node);
+        $scope.nodesTable.push({
+            node: nodes[i].node,
+            Snom: nodes[i].Snom,
+            dUmax: results.max.network.voltage.loss[i] * 1000,
+            dUmin: results.min.network.voltage.loss[i] * 1000,
+            dpUmax: results.max.network.voltage.lossPercent[i],
+            dpUmin: results.min.network.voltage.lossPercent[i],
+            bpUmax: results.max.voltage[i],
+            bpUmin: results.min.voltage[i],
+            branch: results.regimes.main.branches[i]
+        });
+    }
+    $scope.nodesTable = [{
+        node: mainNode.node
+    }].concat($scope.nodesTable);
+
+
+
+    $scope.barChart = {
+        data: [
+            math.multiply(math.abs(results.max.network.matrixUyd.toArray()), 1000)
+                .filter(function(v,k){return nodes[k].Snom > 0;}),
+            math.multiply(math.abs(results.min.network.matrixUyd.toArray()), 1000)
+                .filter(function(v,k){return nodes[k].Snom > 0;})
+        ],
+        ticks: nodesName.filter(function(v,k){return nodes[k].Snom > 0;})
+    };
+
+    $scope.deltaChart = {
+        data: {max: [], min: []},
+        ticks: []
+    };
+    for (i in nodes) {
+        if (nodes[i].Snom > 0) {
+            $scope.deltaChart.data.max.push([
+                i,
+                math.round(results.max.voltage[i] - energy.params.transformerInsensetive, 6),
+                results.voltageDown[i].max.max,
+                results.voltageDown[i].max.min,
+                math.round(results.max.voltage[i] + energy.params.transformerInsensetive, 6)
+            ]);
+            $scope.deltaChart.data.min.push([
+                i,
+                math.round(results.min.voltage[i] - energy.params.transformerInsensetive, 6),
+                results.voltageDown[i].min.max,
+                results.voltageDown[i].min.min,
+                math.round(results.min.voltage[i] + energy.params.transformerInsensetive, 6)
+            ]);
+            $scope.deltaChart.ticks.push(nodes[i].node);
+        }
+    }
+
+
+
+    var edgeRow;
+    for (i in edges) {
+        edgeRow = {
+            start: edges[i].start,
+            finish: edges[i].finish,
+            Imax: math.abs(results.max.network.matrixIv.toArray()[i]) * 1000,
+            Imin: math.abs(results.min.network.matrixIv.toArray()[i]) * 1000,
+            dSmax: math.abs(results.max.network.matrixSvd.toArray()[i]) * 1000,
+            dSmin: math.abs(results.min.network.matrixSvd.toArray()[i]) * 1000,
+            dUmax: math.abs(results.max.network.matrixUvd.toArray()[i]) * 1000,
+            dUmin: math.abs(results.min.network.matrixUvd.toArray()[i]) * 1000
+        };
+        for (j in $scope.nodesTable) {
+            if ($scope.nodesTable[j].node == edges[i].start) {
+                edgeRow.graphS = j;
             }
-            $scope.nodesTable = [{
-                node: mainNode.node
-            }].concat($scope.nodesTable);
-
-
-
-            $scope.barChart = {
-                data: [
-                    math.multiply(math.abs(results.max.network.matrixUyd.toArray()), 1000)
-                        .filter(function(v,k){return nodes[k].Snom > 0;}),
-                    math.multiply(math.abs(results.min.network.matrixUyd.toArray()), 1000)
-                        .filter(function(v,k){return nodes[k].Snom > 0;})
-                ],
-                ticks: nodesName.filter(function(v,k){return nodes[k].Snom > 0;})
-            };
-
-            $scope.deltaChart = {
-                data: {max: [], min: []},
-                ticks: []
-            };
-            for (i in nodes) {
-                if (nodes[i].Snom > 0) {
-                    $scope.deltaChart.data.max.push([
-                        i,
-                        math.round(results.max.voltage[i] - energy.params.transformerInsensetive, 6),
-                        results.voltageDown[i].max.max,
-                        results.voltageDown[i].max.min,
-                        math.round(results.max.voltage[i] + energy.params.transformerInsensetive, 6)
-                    ]);
-                    $scope.deltaChart.data.min.push([
-                        i,
-                        math.round(results.min.voltage[i] - energy.params.transformerInsensetive, 6),
-                        results.voltageDown[i].min.max,
-                        results.voltageDown[i].min.min,
-                        math.round(results.min.voltage[i] + energy.params.transformerInsensetive, 6)
-                    ]);
-                    $scope.deltaChart.ticks.push(nodes[i].node);
-                }
+            if ($scope.nodesTable[j].node == edges[i].finish) {
+                edgeRow.graphD = j;
             }
+        }
+        $scope.edgesTable.push(edgeRow);
+    }
 
 
+    $scope.values = {max: {}, min: {}};
+    for (mode in {max:NaN,min:NaN}) {
+        $scope.values[mode].SgenCmpx = math.multiply(results[mode].network.valueSgen, 1000);
+        $scope.values[mode].Sgen = math.abs($scope.values[mode].SgenCmpx);
+        $scope.values[mode].Pgen = $scope.values[mode].SgenCmpx.re;
+        $scope.values[mode].Qgen = $scope.values[mode].SgenCmpx.im;
 
-            var edgeRow;
-            for (i in edges) {
-                edgeRow = {
-                    start: edges[i].start,
-                    finish: edges[i].finish,
-                    Imax: math.abs(results.max.network.matrixIv.toArray()[i]) * 1000,
-                    Imin: math.abs(results.min.network.matrixIv.toArray()[i]) * 1000,
-                    dSmax: math.abs(results.max.network.matrixSvd.toArray()[i]) * 1000,
-                    dSmin: math.abs(results.min.network.matrixSvd.toArray()[i]) * 1000,
-                    dUmax: math.abs(results.max.network.matrixUvd.toArray()[i]) * 1000,
-                    dUmin: math.abs(results.min.network.matrixUvd.toArray()[i]) * 1000
-                };
-                for (j in $scope.nodesTable) {
-                    if ($scope.nodesTable[j].node == edges[i].start) {
-                        edgeRow.graphS = j;
-                    }
-                    if ($scope.nodesTable[j].node == edges[i].finish) {
-                        edgeRow.graphD = j;
-                    }
-                }
-                $scope.edgesTable.push(edgeRow);
-            }
+        $scope.values[mode].SpowCmpx = math.multiply(math.sum(results[mode].network.matrixSn), 1000);
+        $scope.values[mode].Spow = math.abs($scope.values[mode].SpowCmpx);
+        $scope.values[mode].Ppow = $scope.values[mode].SpowCmpx.re;
+        $scope.values[mode].Qpow = $scope.values[mode].SpowCmpx.im;
 
-            $scope.barChartInit = function(){
-                if (!$scope.barChart.data || !$scope.barChart.data[0].length) { return; }
-                var bar_chart = $.jqplot('bar_chart', math.abs($scope.barChart.data), {
-                    seriesDefaults:{
-                        renderer:$.jqplot.BarRenderer,
-                        rendererOptions: {fillToZero: true}
-                    },
-                    series:[{label:'max'}, {label:'min'}],
-                    legend: {show: true},
-                    axes: {
-                        xaxis: {
-                            renderer: $.jqplot.CategoryAxisRenderer,
-                            ticks: $scope.barChart.ticks
-                        },
-                        yaxis: {
-                            tickOptions: {formatString: '%.2f В'},
-                            tickInterval: 0.5
-                        }
-                    },
-                    highlighter: {
-                        show: true,
-                        showMarker: false,
-                        tooltipAxes: 'y'
-                    }
-                });
-            };
+        $scope.values[mode].dSsumCmpx = math.subtract($scope.values[mode].SgenCmpx, $scope.values[mode].SpowCmpx);
+        $scope.values[mode].dSsum = math.subtract($scope.values[mode].Sgen, $scope.values[mode].Spow);
+        $scope.values[mode].dPsum = math.subtract($scope.values[mode].Pgen, $scope.values[mode].Ppow);
+        $scope.values[mode].dQsum = math.subtract($scope.values[mode].Qgen, $scope.values[mode].Qpow);
+    }
 
-            var deltaChartOptions = {
-                axes: {
-                    xaxis: {
-                        renderer: $.jqplot.CategoryAxisRenderer,
-                        ticks: $scope.deltaChart.ticks
-                    },
-                    yaxis: {
-                        tickOptions:{formatString: '%.3f%'}
-                    }
+
+    $scope.barChartInit = function(){
+        if (!$scope.barChart.data || !$scope.barChart.data[0].length) { return; }
+        var bar_chart = $.jqplot('bar_chart', math.abs($scope.barChart.data), {
+            seriesDefaults:{
+                renderer:$.jqplot.BarRenderer,
+                rendererOptions: {fillToZero: true}
+            },
+            series:[{label:'max'}, {label:'min'}],
+            legend: {show: true},
+            axes: {
+                xaxis: {
+                    renderer: $.jqplot.CategoryAxisRenderer,
+                    ticks: $scope.barChart.ticks
                 },
-                series: [
-                    {
-                        renderer:$.jqplot.OHLCRenderer, rendererOptions:{
-                            candleStick: true,
-                            lineWidth: 3
-                        }
-                    }
-                ],
-                highlighter: {
-                    show: true,
-                    showMarker:false,
-                    tooltipAxes: 'y',
-                    yvalues: 4,
-                    formatString:'<table class="jqplot-highlighter"> \
+                yaxis: {
+                    tickOptions: {formatString: '%.2f В'},
+                    tickInterval: 0.5
+                }
+            },
+            highlighter: {
+                show: true,
+                showMarker: false,
+                tooltipAxes: 'y'
+            }
+        });
+    };
+
+    var deltaChartOptions = {
+        axes: {
+            xaxis: {
+                renderer: $.jqplot.CategoryAxisRenderer,
+                ticks: $scope.deltaChart.ticks
+            },
+            yaxis: {
+                tickOptions:{formatString: '%.3f%'}
+            }
+        },
+        series: [
+            {
+                renderer:$.jqplot.OHLCRenderer, rendererOptions:{
+                candleStick: true,
+                lineWidth: 3
+            }
+            }
+        ],
+        highlighter: {
+            show: true,
+            showMarker:false,
+            tooltipAxes: 'y',
+            yvalues: 4,
+            formatString:'<table class="jqplot-highlighter"> \
                       <tr><td>δU<sub>н.нб</sub>:</td><td>%s</td></tr> \
                       <tr><td>δU<sub>ТП.нб</sub>:</td><td>%s</td></tr> \
                       <tr><td>δU<sub>ТП.нм</sub>:</td><td>%s</td></tr> \
                       <tr><td>δU<sub>н.нм</sub>:</td><td>%s</td></tr></table>'
-                }
-            };
-            $scope.deltaChartMaxInit = function(){
-                if (!$scope.deltaChart.data.max.length) { return; }
-                var deltaChartMax = $.jqplot('delta_chart_max',[$scope.deltaChart.data.max], deltaChartOptions);
-            };
-            $scope.deltaChartMinInit = function(){
-                if (!$scope.deltaChart.data.max.length) { return; }
-                var deltaChartMin = $.jqplot('delta_chart_min',[$scope.deltaChart.data.min], deltaChartOptions);
-            };
         }
-    }]);
+    };
+    $scope.deltaChartMaxInit = function(){
+        if (!$scope.deltaChart.data.max.length) { return; }
+        var deltaChartMax = $.jqplot('delta_chart_max',[$scope.deltaChart.data.max], deltaChartOptions);
+    };
+    $scope.deltaChartMinInit = function(){
+        if (!$scope.deltaChart.data.max.length) { return; }
+        var deltaChartMin = $.jqplot('delta_chart_min',[$scope.deltaChart.data.min], deltaChartOptions);
+    };
+}

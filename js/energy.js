@@ -7,7 +7,8 @@ function getEnergy() {
 
     self.SQRT3 = math.sqrt(3);
 
-    self.results = {};
+    self.results = {max: {}, min: {}};
+    self.storage = {voltage: {max: {}, min: {}}};
     self.params = {
         Unom: 10,
         UnomDown: 0.38,
@@ -15,7 +16,9 @@ function getEnergy() {
         transformerInsensetive: 1.157,
         transformerRegimes: [{max:+5,min:0},{max:+10,min:+5},{max:+10,min:0},{max:0,min:-5},{max:0,min:0},{max:+5,min:+5}],
         transformerAdditions: {"-5%": 10.8, "-2.5%": 7.9, "0%": 5.26, "+2.5%": 2.63, "+5%": 0.26},
-        voltageDown: {dUmax: 0, dUmin: 0}
+        voltageDown: {dUmax: 0, dUmin: 0},
+        defaultRegime: {max: 0, min: 0},
+        temp: {}
     };
 
     self.getErrors = function () { return errors; };
@@ -264,6 +267,7 @@ function getEnergy() {
     self.getResults = function () {
         self.resetErrors();
         self.results = {min: {}, max: {}};
+        self.storage = {voltage: {max: {}, min: {}}};
 
         self.validateNodes();
         self.validateEdges();
@@ -333,8 +337,13 @@ function getEnergy() {
         for (i = 0, ii = nodes.length; i < ii; ++i) {
             Smult = math.complex({r: 1000 * self.SQRT3 * Unom * nodes[i].Snom / sumS, phi: phi});
             Smax = math.multiply(Smult, Imax);
-            Smax = math.multiply(Smult, Imax);
             Smin = math.multiply(Smult, Imin);
+            if (math.abs(Smax) > nodes[i].Snom) {
+                Smax = math.complex({r: nodes[i].Snom, phi: phi});
+            }
+            if (math.abs(Smin) > nodes[i].Snom) {
+                Smin = math.complex({r: nodes[i].Snom, phi: phi});
+            }
             nodes[i].Pmax = math.round(Smax.re, 3);
             nodes[i].Qmax = math.round(Smax.im, 3);
             nodes[i].Pmin = math.round(Smin.re, 3);
@@ -357,13 +366,17 @@ function getEnergy() {
             if (voltage !== undefined) {
                 powers[mode] = self.useSHN(powers[mode], voltage);
             }
-            return self.getPowersDown2Up(powers[mode]);
+            return powers[mode];
         } else {
             return {
-                max: self.getPowersDown2Up(powers['max']),
-                min: self.getPowersDown2Up(powers['min'])
+                max: powers['max'],
+                min: powers['min']
             };
         }
+    };
+
+    self.getPowersMatrix = function(powers, matrixU) {
+        return self.getPowersDown2Up(math.matrix(powers), matrixU);
     };
 
     self.getVoltageDown = function () {
@@ -567,8 +580,9 @@ function getEnergy() {
         matrixYy = math.multiply(math.multiply(matrixM, matrixYv), math.transpose(matrixM));
         matrixYb = getMatrixYb(matrixYy);
 
-        result.matrixS = math.matrix(defMatrixS);
-        result.valueUmain = math.complex({r: valueUmain, phi: math.sum(defMatrixS).toPolar().phi});
+        result.matrixSn = defMatrixS;
+        result.matrixS = self.getPowersMatrix(result.matrixSn);
+        result.valueUmain = math.complex({r: valueUmain, phi: math.sum(result.matrixSn).toPolar().phi});
         result.valueSgen = math.complex(0, 0);
 
         for (j = 0; j < limitJ && valueAccuracyJ > valueAccuracyMax; ++j) {
@@ -581,14 +595,16 @@ function getEnergy() {
                 result.matrixUyd = math.add(result.matrixUyd, matrixUdiff);
                 result.matrixUy = math.subtract(result.valueUmain, result.matrixUyd);
                 result.voltage = self.calcVoltage(result.matrixS, result.matrixUyd, result.matrixUy, result.valueUmain);
-                result.matrixS = self.getPowers(mode, self.getVoltageReal(result.voltage.delta, branches));
+                result.voltageReal = self.getVoltageReal(result.voltage.delta, branches);
+                result.matrixSn = self.getPowers(mode, result.voltageReal);
+                result.matrixS = self.getPowersMatrix(result.matrixSn, math.add(math.multiply(result.voltageReal, valueUnom / 100), valueUnom));
 
                 valueAccuracyI = math.max(math.abs(matrixUdiff));
             }
 
             valueSgen = result.valueSgen;
 
-            result.valueSgen = math.multiply(
+            result.valueSgen = math.unary(math.multiply(
                 math.multiply(
                     math.multiply(
                         math.multiply(
@@ -600,9 +616,9 @@ function getEnergy() {
                     result.matrixUyd
                 ).toArray(),
                 matrixMb.toArray()
-            );
+            ));
 
-            result.valueUmain = math.complex({r: math.abs(result.valueUmain), phi: math.unary(result.valueSgen).toPolar().phi});
+            result.valueUmain = math.complex({r: math.abs(result.valueUmain), phi: result.valueSgen.toPolar().phi});
             valueAccuracyJ = math.abs(math.divide(math.subtract(result.valueSgen, valueSgen), result.valueSgen));
         }
 
@@ -652,6 +668,10 @@ function getEnergy() {
             return self._clone(self.results[mode].voltage);
         }
 
+        if (self.storage.voltage[mode][(coefU || 1)] !== undefined && branches === undefined) {
+            return self.storage.voltage[mode][(coefU || 1)];
+        }
+
         var network = self.calcNetwork(mode, coefU, saveResults, branches),
             voltage;
 
@@ -662,7 +682,13 @@ function getEnergy() {
         voltage = self.getVoltageReal(network.voltage.delta, branches);
 
         if (saveResults) {
+            if (coefU == undefined && branches === undefined) {
+                self.results[mode].voltageBase = self._clone(voltage);
+            }
             self.results[mode].voltage = self._clone(voltage);
+        }
+        if (branches === undefined) {
+            self.storage.voltage[mode][(coefU || 1)] = self._clone(voltage);
         }
 
         return voltage;
@@ -686,81 +712,94 @@ function getEnergy() {
         }
     };
 
+
+    self.func = {};
+
+    self.func.getLimits  = function (voltageDown, valueU) {
+        return {
+            max: voltageDown.max - self.params.transformerInsensetive - valueU,
+            min: voltageDown.min + self.params.transformerInsensetive - valueU
+        };
+    };
+
+    self.func.getBranches = function (addUmax, addUmin, voltageMax, voltageMin, voltageDown, usedBranches, force) {
+        var dUmax, dUmin,
+            limitsMax, limitsMin,
+            branches = [],
+            allSet = true,
+            i, ii, j;
+
+        voltageMax = self._clone(voltageMax);
+        voltageMin = self._clone(voltageMin);
+
+        for (i = 0, ii = voltageDown.length; i < ii; ++i) {
+            if (voltageDown[i]) {
+                limitsMax = self.func.getLimits(voltageDown[i].max, addUmax);
+                limitsMin = self.func.getLimits(voltageDown[i].min, addUmin);
+
+                if (usedBranches) {
+                    voltageMax[i] -= self.params.transformerAdditions[usedBranches[i]];
+                    voltageMin[i] -= self.params.transformerAdditions[usedBranches[i]];
+                }
+
+                for (j in self.params.transformerAdditions) {
+                    dUmax = voltageMax[i] + self.params.transformerAdditions[j];
+                    dUmin = voltageMin[i] + self.params.transformerAdditions[j];
+                    if (dUmax > limitsMax.min && dUmax < limitsMax.max && dUmin > limitsMin.min && dUmin < limitsMin.max) {
+                        branches[i] = j;
+                        break;
+                    }
+                }
+
+                if (branches[i] === undefined) {
+                    allSet = false;
+                }
+            }
+        }
+
+        return force || (allSet && branches.length) ? branches : NaN;
+    };
+
+    self.func.checkRegime = function(regime, branches, voltageDown) {
+        var regimeVoltageMax = self.getVoltage('max', 1 + regime.max / 100, true, branches);
+        var regimeVoltageMin = self.getVoltage('min', 1 + regime.min / 100, true, branches);
+
+        if (regimeVoltageMax && regimeVoltageMin) {
+            var newBranches = self.func.getBranches(0, 0, regimeVoltageMax, regimeVoltageMin, voltageDown, branches);
+            if (!self.func.compareBranches(branches, newBranches)) {
+                return self.func.checkRegime(regime, newBranches, voltageDown);
+            }
+            if (newBranches) {
+                return newBranches;
+            }
+        }
+
+        return NaN;
+    };
+
+    self.func.compareBranches = function(branches1, branches2) {
+        if (branches1.length != branches2.length) {
+            return false;
+        }
+        for (var i = 0, ii = branches1.length; i < ii; ++i) {
+            if (branches1[i] !== branches2[i]) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+
     self.calc = function (saveResults) {
         saveResults = saveResults === undefined ? true : saveResults;
         if (self.results.regimes !== undefined) {
             return self._clone(self.results.regimes);
         }
 
-        var valueInsens = self.params.transformerInsensetive,
-            voltageDown, voltageMax, voltageMin,
+        var voltageDown, voltageMax, voltageMin,
             regimes = self.params.transformerRegimes,
-            additions = self.params.transformerAdditions,
             branches, regime,
             result, i;
-
-        var combineLimits = function (limits1, limits2) {
-            return {
-                max: limits1.max < limits2.max ? limits1.max : limits2.max,
-                min: limits1.min > limits2.min ? limits1.min : limits2.min
-            };
-        };
-
-        var getLimits = function (voltageDown, valueU) {
-            return {
-                max: voltageDown.max - valueInsens - valueU,
-                min: voltageDown.min + valueInsens - valueU
-            };
-        };
-
-        var getBranches = function (addUmax, addUmin, voltageMax, voltageMin, usedBranches) {
-            var dUmax, dUmin,
-                limitsMax, limitsMin,
-                branches = [],
-                allSet = true,
-                i, ii, j;
-
-            for (i = 0, ii = voltageDown.length; i < ii; ++i) {
-                if (voltageDown[i]) {
-                    limitsMax = getLimits(voltageDown[i].max, addUmax);
-                    limitsMin = getLimits(voltageDown[i].min, addUmin);
-
-                    if (usedBranches) {
-                        voltageMax[i] -= additions[usedBranches[i]];
-                        voltageMin[i] -= additions[usedBranches[i]];
-                    }
-
-                    for (j in additions) {
-                        dUmax = voltageMax[i] + additions[j];
-                        dUmin = voltageMin[i] + additions[j];
-                        if (dUmax > limitsMax.min && dUmax < limitsMax.max && dUmin > limitsMin.min && dUmin < limitsMin.max) {
-                            branches[i] = j;
-                            break;
-                        }
-                    }
-
-                    if (branches[i] === undefined) {
-                        allSet = false;
-                    }
-                }
-            }
-
-            return allSet && branches.length ? branches : NaN;
-        };
-
-        var checkRegime = function(regime, branches) {
-            var regimeVoltageMax = self.getVoltage('max', 1 + regime.max / 100, true, branches);
-            var regimeVoltageMin = self.getVoltage('min', 1 + regime.min / 100, true, branches);
-
-            if (regimeVoltageMax && regimeVoltageMin) {
-                branches = getBranches(0, 0, regimeVoltageMax, regimeVoltageMin, branches);
-                if (branches) {
-                    return branches;
-                }
-            }
-
-            return NaN;
-        };
 
         voltageDown = self.getVoltageDown();
         voltageMax = self.getVoltage('max');
@@ -776,20 +815,30 @@ function getEnergy() {
 
         for (i in regimes) {
             regime = regimes[i];
-            branches = getBranches(regime.max, regime.min, voltageMax, voltageMin);
-            if (branches && (branches = checkRegime(regime, branches))) {
+            voltageMax = self.getVoltage('max', 1 + regime.max / 100, false);
+            voltageMin = self.getVoltage('min', 1 + regime.min / 100, false);
+
+            branches = self.func.getBranches(0, 0, voltageMax, voltageMin, voltageDown);
+            if (branches && (branches = self.func.checkRegime(regime, branches, voltageDown))) {
                 regimeMain = {regime: regime, branches: branches};
                 break;
             }
         }
 
+        voltageMax = self.getVoltage('max');
+        voltageMin = self.getVoltage('min');
+
         regime = {max: -0.1, min: -0.1};
         mainWhile:
-        while (regime.min < 2.45) {
+        while (regime.min < 7.45) {
             regime = {max: regime.min, min: regime.min + 0.1};
-            while (regime.max < 7.45) {
+            voltageMin = self.getVoltage('min', 1 + math.round(regime.min) / 100, false);
+
+            while (regime.max < 12.45) {
                 regime = {max: regime.max + 0.1, min: regime.min};
-                branches = getBranches(regime.max, regime.min, voltageMax, voltageMin);
+                voltageMax = self.getVoltage('max', 1 + math.round(regime.max) / 100, false);
+
+                branches = self.func.getBranches(regime.max - math.round(regime.max), regime.min - math.round(regime.min), voltageMax, voltageMin, voltageDown);
                 if (branches) {
                     if (!regimeMin.regime) {
                         regimeMin = {regime: regime, branches: branches};
@@ -806,8 +855,7 @@ function getEnergy() {
                 max: (regimeMin.regime.max + regimeMax.regime.max) / 2,
                 min: (regimeMin.regime.min + regimeMax.regime.min) / 2
             };
-            branches = getBranches(regime.max, regime.min, voltageMax, voltageMin);
-            if (branches && (branches = checkRegime(regime, branches))) {
+            if (branches = self.func.checkRegime(regime, branches, voltageDown)) {
                 regimeMain = {regime: regime, branches: branches};
             }
         }
@@ -815,6 +863,8 @@ function getEnergy() {
         if (!regimeMain.regime) {
             self.results.max.network = self._clone(self.results.max.networkBase);
             self.results.min.network = self._clone(self.results.min.networkBase);
+            self.results.max.voltage = self._clone(self.results.max.voltageBase);
+            self.results.min.voltage = self._clone(self.results.min.voltageBase);
         }
 
         result = {main: regimeMain, min: regimeMin, max: regimeMax};
@@ -824,6 +874,62 @@ function getEnergy() {
         }
 
         return self._clone(result);
+    };
+
+    self.calcRegime = function(regimeMax, regimeMin) {
+        var results = {max: {}, min: {}},
+            regime = {max: regimeMax || 0, min: regimeMin || 0},
+            coefUmax, coefUmin,
+            voltageDown,
+            branches;
+
+        coefUmax = regime.max / 100 + 1;
+        coefUmin = regime.min / 100 + 1;
+
+        results.max.network = self.calcNetwork('max', coefUmax, false);
+        results.min.network = self.calcNetwork('min', coefUmin, false);
+
+        if (!results.max.network || !results.min.network) {
+            return NaN;
+        }
+
+        voltageDown = self.getVoltageDown();
+        results.voltageDown = voltageDown;
+        results.regimes = {main: {regime: regime, branches: NaN}};
+
+        results.max.voltage = results.max.network.voltage.delta;
+        results.min.voltage = results.min.network.voltage.delta;
+
+        branches = self.func.getBranches(0, 0, results.max.voltage, results.min.voltage, results.voltageDown);
+
+        var useBranches = function(branches) {
+            var results = {max: {}, min: {}},
+                newBranches;
+
+            if (branches) {
+                results.voltageDown = voltageDown;
+                results.regimes = {main: {regime: regime, branches: NaN}};
+
+                results.max.network = self.calcNetwork('max', coefUmax, false, branches);
+                results.min.network = self.calcNetwork('min', coefUmin, false, branches);
+
+                results.max.voltage = self.getVoltageReal(results.max.network.voltage.delta, branches);
+                results.min.voltage = self.getVoltageReal(results.min.network.voltage.delta, branches);
+
+                newBranches = self.func.getBranches(0, 0, results.max.voltage, results.min.voltage, results.voltageDown, branches);
+                results.regimes.main.branches = newBranches;
+
+                if (!self.func.compareBranches(branches, newBranches)) {
+                    return useBranches(newBranches);
+                }
+
+                return results;
+            }
+
+            return NaN;
+        };
+
+        return useBranches(branches) || results;
     };
 
 

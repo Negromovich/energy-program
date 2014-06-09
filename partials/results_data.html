@@ -1,0 +1,103 @@
+<h2>Узлы</h2>
+<table class="table table-bordered table-condensed table-hover table-striped">
+    <thead class="text-center-children">
+    <tr>
+        <th rowspan="2">Узел</th>
+        <th colspan="3">Режим максимальных нагрузок</th>
+        <th colspan="3">Режим минимальных нагрузок</th>
+        <th rowspan="2" title="Ответвление первичной обмотки трансформатора">ПБВ</th>
+    </tr>
+    <tr>
+        <th title="Потери напряжения от ЦП до шин НН ТП в режиме максимальных нагрузок">ΔU<sup>max</sup>, В</th>
+        <th title="Потери напряжения от ЦП до шин НН ТП в режиме максимальных нагрузок">ΔU<sup>max</sup>, %</th>
+        <th title="Отклонение напряжения на шинах НН ТП в режиме максимальных нагрузок">δU<sup>max</sup>, %</th>
+        <th title="Потери напряжения от ЦП до шин НН ТП в режиме минимальных нагрузок">ΔU<sup>min</sup>, В</th>
+        <th title="Потери напряжения от ЦП до шин НН ТП в режиме минимальных нагрузок">ΔU<sup>min</sup>, %</th>
+        <th title="Отклонение напряжения на шинах НН ТП в режиме минимальных нагрузок">δU<sup>min</sup>, %</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr ng-repeat="node in nodesTable" ng-if="node.Snom > 0">
+        <td class="text-center">{{node.node}}</td>
+        <td class="text-right">{{node.dUmax | round:2}}</td>
+        <td class="text-right">{{node.dpUmax | round:3}}</td>
+        <td class="text-right">{{node.bpUmax | round:3}}</td>
+        <td class="text-right">{{node.dUmin | round:2}}</td>
+        <td class="text-right">{{node.dpUmin | round:3}}</td>
+        <td class="text-right">{{node.bpUmin | round:3}}</td>
+        <td class="text-center">{{node.branch}}</td>
+    </tr>
+    </tbody>
+</table>
+
+<div id="bar_chart" ng-init="barChartInit()"></div>
+<p class="text-center">Потери напряжения от ЦП до шин НН ТП</p>
+
+<div id="delta_chart_max" ng-init="deltaChartMaxInit()"></div>
+<p class="text-center">Отклонение напряжения и допустимые пределы отклонения на шинах НН ТП в режиме максимальных нагрузок</p>
+
+<div id="delta_chart_min" ng-init="deltaChartMinInit()"></div>
+<p class="text-center">Отклонение напряжения и допустимые пределы отклонения на шинах НН ТП в режиме минимальных нагрузок</p>
+
+
+
+<h2>Ветви</h2>
+<table class="table table-bordered table-condensed table-hover table-striped">
+    <thead class="text-center-children">
+    <tr>
+        <th rowspan="2">Начало</th>
+        <th rowspan="2">Конец</th>
+        <th colspan="3">Режим максимальных нагрузок</th>
+        <th colspan="3">Режим минимальных нагрузок</th>
+    </tr>
+    <tr>
+        <th>I<sup>max</sup>, А</th>
+        <th>ΔS<sup>max</sup>, кВ•А</th>
+        <th>ΔU<sup>max</sup>, В</th>
+        <th>I<sup>min</sup>, А</th>
+        <th>ΔS<sup>min</sup>, кВ•А</th>
+        <th>ΔU<sup>max</sup>, В</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr ng-repeat="edge in edgesTable">
+        <td class="text-center">{{edge.start}}</td>
+        <td class="text-center">{{edge.finish}}</td>
+        <td class="text-right">{{edge.Imax | round:2}}</td>
+        <td class="text-right">{{edge.dSmax | round:2}}</td>
+        <td class="text-right">{{edge.dUmax | round:2}}</td>
+        <td class="text-right">{{edge.Imin | round:2}}</td>
+        <td class="text-right">{{edge.dSmin | round:2}}</td>
+        <td class="text-right">{{edge.dUmin | round:2}}</td>
+    </tr>
+    </tbody>
+</table>
+
+
+<h2>Обобщенные параметры</h2>
+<table class="table table-bordered table-condensed table-hover table-striped">
+    <thead class="text-center-children">
+    <tr>
+        <th>Параметр</th>
+        <th>Режим максимальных нагрузок</th>
+        <th>Режим минимальных нагрузок</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Суммарная нагрузка всех ТП</td>
+        <td>{{values.max.Spow | round:2}} кВ•А ({{values.max.Ppow | round:2}} кВт + {{values.max.Qpow | round:2}} квар)</td>
+        <td>{{values.min.Spow | round:2}} кВ•А ({{values.min.Ppow | round:2}} кВт + {{values.min.Qpow | round:2}} квар)</td>
+    </tr>
+    <tr>
+        <td>Отдаваемая мощность ЦП</td>
+        <td>{{values.max.Sgen | round:2}} кВ•А ({{values.max.Pgen | round:2}} кВт + {{values.max.Qgen | round:2}} квар)</td>
+        <td>{{values.min.Sgen | round:2}} кВ•А ({{values.min.Pgen | round:2}} кВт + {{values.min.Qgen | round:2}} квар)</td>
+    </tr>
+    <tr>
+        <td>Суммарная потери мощности в сети</td>
+        <td>{{values.max.dSsum | round:2}} кВ•А ({{values.max.dPsum | round:2}} кВт + {{values.max.dQsum | round:2}} квар)</td>
+        <td>{{values.min.dSsum | round:2}} кВ•А ({{values.min.dPsum | round:2}} кВт + {{values.min.dQsum | round:2}} квар)</td>
+    </tr>
+    </tbody>
+</table>

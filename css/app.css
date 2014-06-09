@@ -11,3 +11,5 @@ footer { display: block; min-height: 50px; }
 .text-left-children   * { text-align: left; }
 .text-center-children * { text-align: center; }
 .text-right-children  * { text-align: right; }
+
+.table-cols-5 td { width: 20%; }
