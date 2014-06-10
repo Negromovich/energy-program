@@ -12,23 +12,29 @@ angular.module('energy.controllers', [])
         $scope.$parent.currentTab = 'Nodes';
 
         $scope.nodes = energy.getNodes();
+        $scope.$watch('nodes', watchListenerClearingData, true);
+
         $scope.params = energy.params.temp;
         $scope.transformers = [{}].concat(energy.transformers);
 
         $scope.addNodeEmpty = function () {
             energy.addNode();
+            energy.clearResults();
         };
 
         $scope.removeNode = function (node) {
             energy.removeNode(node);
+            energy.clearResults();
         };
 
         $scope.updateTransformer = function (node) {
             energy.updateTransformer(node);
+            energy.clearResults();
         };
 
         $scope.setMainParams = function (params) {
-            energy.setPowers(params.Imax, params.Imin, params.cosPhi);
+            energy.setPowers(params.Imax, params.Imin, params.cosPhiMax, params.cosPhiMin);
+            energy.clearResults();
         };
 
         $scope.updateMainNode = function (node) {
@@ -37,6 +43,7 @@ angular.module('energy.controllers', [])
                     $scope.nodes[i].main = false;
                 }
             }
+            energy.clearResults();
         };
 
         $scope.SHN = energy.params.SHN;
@@ -98,19 +105,24 @@ angular.module('energy.controllers', [])
 
         $scope.nodes = energy.getNodes();
         $scope.edges = energy.getEdges();
+        $scope.$watch('nodes', watchListenerClearingData, true);
+        $scope.$watch('edges', watchListenerClearingData, true);
 
         $scope.cables = [{}].concat(energy.cables);
 
         $scope.addEdgeEmpty = function () {
             energy.addEdge();
+            energy.clearResults();
         };
 
         $scope.removeEdge = function (edge) {
             energy.removeEdge(edge);
+            energy.clearResults();
         };
 
         $scope.updateCable = function (edge) {
             self.updateCable(edge);
+            energy.clearResults();
         };
     }])
 
@@ -132,12 +144,80 @@ angular.module('energy.controllers', [])
         $scope.$parent.currentTab = 'Regime';
         $scope.regime = energy.params.defaultRegime;
 
-        var results = energy.calcRegime($scope.regime.max, $scope.regime.min);
+        var results = energy.calcRegime($scope.regime);
 
         _prepareResults(results, $scope);
 
         $scope.updateRegime = function() {
             $route.reload();
+        }
+    }])
+
+
+    .controller('Branches', ['$scope', '$route', function($scope, $route) {
+        $scope.$parent.currentTab = 'Branches';
+
+        $scope.defaultBranches = energy.params.defaultBranches;
+
+        $scope.additions = [];
+        for (var addition in energy.params.transformerAdditions) {
+            $scope.additions.push(addition);
+        }
+
+        var nodes = energy.getNodes(false);
+
+        var getBranches = function() {
+            var branches = [];
+
+            for (var i = 0, ii = $scope.nodes.length; i < ii; ++i) {
+                if (nodes[i].Snom > 0) {
+                    if ($scope.nodes[i].branch) {
+                        branches[i] = $scope.nodes[i].branch;
+                    } else {
+                        return [];
+                    }
+                }
+            }
+
+            return branches;
+        };
+
+        $scope.nodes = [];
+        for (var i = 0, ii = nodes.length; i < ii; ++i) {
+            if (nodes[i].Snom > 0) {
+                if ($scope.defaultBranches[i]) {
+                    nodes[i].branch = $scope.defaultBranches[i];
+                }
+                $scope.nodes[i] = nodes[i];
+            }
+        }
+        $scope.$watch('nodes', function() {
+            $scope.defaultBranches = getBranches();
+            energy.defaultBranches = $scope.defaultBranches;
+        }, true);
+
+        $scope.globalBranch = '';
+        $scope.setGlobal = function (value) {
+            for (var i in $scope.nodes) {
+                $scope.nodes[i].branch = value;
+            }
+            $scope.defaultBranches = getBranches();
+            energy.defaultBranches = $scope.defaultBranches;
+        };
+        $scope.clearGlobal = function () {
+            $scope.globalBranch = '';
+        };
+
+        $scope.calc = function() {
+            $route.reload();
+        };
+
+
+
+        if (($scope.branches = getBranches()).length) {
+            var results = energy.calcRegimeBranches($scope.branches);
+            console.log('branches results', results);
+            _prepareResults(results, $scope);
         }
     }]);
 
@@ -153,7 +233,7 @@ function _prepareResults(results, $scope) {
     $scope.regimes = results.regimes;
     for (i in $scope.regimes) {
         for (mode in {max:NaN,min:NaN}) {
-            if ($scope.regimes[i].regime[mode]) {
+            if ($scope.regimes[i] && $scope.regimes[i].regime[mode]) {
                 $scope.regimes[i].regime[mode] = math.round($scope.regimes[i].regime[mode], 2);
             }
         }
@@ -169,8 +249,12 @@ function _prepareResults(results, $scope) {
             dUmin: results.min.network.voltage.loss[i] * 1000,
             dpUmax: results.max.network.voltage.lossPercent[i],
             dpUmin: results.min.network.voltage.lossPercent[i],
-            bpUmax: results.max.voltage[i],
-            bpUmin: results.min.voltage[i],
+            bpUmax: results.max.network.voltageReal[i],
+            bpUmin: results.min.network.voltageReal[i],
+            Pmax: results.max.network.matrixSn.toArray()[i].re * 1000,
+            Pmin: results.min.network.matrixSn.toArray()[i].re * 1000,
+            Qmax: results.max.network.matrixSn.toArray()[i].im * 1000,
+            Qmin: results.min.network.matrixSn.toArray()[i].im * 1000,
             branch: results.regimes.main.branches[i]
         });
     }
@@ -182,10 +266,8 @@ function _prepareResults(results, $scope) {
 
     $scope.barChart = {
         data: [
-            math.multiply(math.abs(results.max.network.matrixUyd.toArray()), 1000)
-                .filter(function(v,k){return nodes[k].Snom > 0;}),
-            math.multiply(math.abs(results.min.network.matrixUyd.toArray()), 1000)
-                .filter(function(v,k){return nodes[k].Snom > 0;})
+            math.abs(results.max.network.voltage.lossPercent).filter(function(v,k){return nodes[k].Snom > 0;}),
+            math.abs(results.min.network.voltage.lossPercent).filter(function(v,k){return nodes[k].Snom > 0;})
         ],
         ticks: nodesName.filter(function(v,k){return nodes[k].Snom > 0;})
     };
@@ -198,17 +280,17 @@ function _prepareResults(results, $scope) {
         if (nodes[i].Snom > 0) {
             $scope.deltaChart.data.max.push([
                 i,
-                math.round(results.max.voltage[i] - energy.params.transformerInsensetive, 6),
+                math.round(results.max.network.voltageReal[i] - energy.params.transformerInsensetive, 6),
                 results.voltageDown[i].max.max,
                 results.voltageDown[i].max.min,
-                math.round(results.max.voltage[i] + energy.params.transformerInsensetive, 6)
+                math.round(results.max.network.voltageReal[i] + energy.params.transformerInsensetive, 6)
             ]);
             $scope.deltaChart.data.min.push([
                 i,
-                math.round(results.min.voltage[i] - energy.params.transformerInsensetive, 6),
+                math.round(results.min.network.voltageReal[i] - energy.params.transformerInsensetive, 6),
                 results.voltageDown[i].min.max,
                 results.voltageDown[i].min.min,
-                math.round(results.min.voltage[i] + energy.params.transformerInsensetive, 6)
+                math.round(results.min.network.voltageReal[i] + energy.params.transformerInsensetive, 6)
             ]);
             $scope.deltaChart.ticks.push(nodes[i].node);
         }
@@ -225,6 +307,10 @@ function _prepareResults(results, $scope) {
             Imin: math.abs(results.min.network.matrixIv.toArray()[i]) * 1000,
             dSmax: math.abs(results.max.network.matrixSvd.toArray()[i]) * 1000,
             dSmin: math.abs(results.min.network.matrixSvd.toArray()[i]) * 1000,
+            dPmax: math.abs(results.max.network.matrixSvd.toArray()[i].re) * 1000,
+            dPmin: math.abs(results.min.network.matrixSvd.toArray()[i].re) * 1000,
+            dQmax: math.abs(results.max.network.matrixSvd.toArray()[i].im) * 1000,
+            dQmin: math.abs(results.min.network.matrixSvd.toArray()[i].im) * 1000,
             dUmax: math.abs(results.max.network.matrixUvd.toArray()[i]) * 1000,
             dUmin: math.abs(results.min.network.matrixUvd.toArray()[i]) * 1000
         };
@@ -274,8 +360,7 @@ function _prepareResults(results, $scope) {
                     ticks: $scope.barChart.ticks
                 },
                 yaxis: {
-                    tickOptions: {formatString: '%.2f В'},
-                    tickInterval: 0.5
+                    tickOptions: {formatString: '%.3f%'}
                 }
             },
             highlighter: {
@@ -324,4 +409,10 @@ function _prepareResults(results, $scope) {
         if (!$scope.deltaChart.data.max.length) { return; }
         var deltaChartMin = $.jqplot('delta_chart_min',[$scope.deltaChart.data.min], deltaChartOptions);
     };
+}
+
+function watchListenerClearingData (newValue, oldValue) {
+    if (!angular.equals(newValue, oldValue)) {
+        energy.clearResults();
+    }
 }

@@ -1,0 +1,52 @@
+<div ng-if="errors.length">
+    Во время выполнение расчета возникли следующие ошибки:
+    <ul>
+        <li ng-repeat="error in errors">{{error}}</li>
+    </ul>
+</div>
+
+<div ng-if="!errors.length">
+    <form name="regimeSet" class="row">
+        <div class="col-lg-4 col-lg-push-4 col-md-6 col-md-push-3 col-sm-8 col-sm-push-2">
+            <h2>Задать ПБВ</h2>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th class="text-center">Узел</th>
+                    <th>ПБВ</th>
+                </tr>
+                <tr>
+                    <th class="text-center">все узлы</th>
+                    <th>
+                        <select name="branch" ng-model="globalBranch"
+                                ng-options="addition for addition in additions"
+                                ng-change="setGlobal(globalBranch)"
+                                ></select>
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="node in nodes" ng-if="node.Snom">
+                    <td class="text-center">{{node.node}}</td>
+                    <td>
+                        <select name="branch" ng-model="node.branch"
+                                ng-options="addition for addition in additions"
+                                ng-change="clearGlobal()"
+                                required></select>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2"><button class="btn btn-block btn-primary" ng-click="calc()">Рассчитать</button></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    <div ng-include="'partials/results_data.html'" ng-if="branches.length"></div>
+</div>
+
+<div class="container footer-links">
+    <a href="#/nodes" class="btn btn-lg btn-primary"><i class="glyphicon glyphicon-chevron-left"></i> Вернутся к узлам</a>
+    <a href="#/edges" class="btn btn-lg btn-primary"><i class="glyphicon glyphicon-chevron-left"></i> Вернутся к ветвям</a>
+</div>
