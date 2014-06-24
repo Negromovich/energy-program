@@ -1,0 +1,79 @@
+<h1>Общие параметры расчета</h1>
+
+<div class="row">
+    <div class="col-lg-4 col-lg-push-4 col-md-8 col-md-push-2">
+        <form name="settingsForm">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Параметр</th>
+                    <th>Значение</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td title="Номинальное напряжение распределительной сети">U<sub>ном</sub>, кВ</td>
+                    <td><input type="number" step="0.1" name="Unom" ng-model="params.Unom" required></td>
+                </tr>
+                <tr>
+                    <td title="Зона нечувствительности трансформатора в ЦП">δU<sub>нч</sub>, %</td>
+                    <td><input type="number" step="0.001" name="transformerInsensetive" ng-model="params.transformerInsensetive" required></td>
+                </tr>
+                </tbody>
+            </table>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <h3>Рекомендуемые режимы регулирования напряжения в ЦП</h3>
+        <form name="transformerRegimesForm">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th title="Порядковый номер (приоритет)">#</th>
+                    <th title="Отклонение напряжения в ЦП в режиме максимальных нагрузок">δU<sub>ЦП</sub><sup>max</sup>, %</th>
+                    <th title="Отклонение напряжения в ЦП в режиме минимальных нагрузок">δU<sub>ЦП</sub><sup>min</sup>, %</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="regime in params.transformerRegimes">
+                    <td>{{ $index+1 }}</td>
+                    <td><input type="number" step="0.1" name="regimeMax" ng-model="regime.max" required></td>
+                    <td><input type="number" step="0.1" name="regimeMin" ng-model="regime.min" required></td>
+                    <td><button class="btn btn-danger btn-xs" ng-click="removeRegime(regime)"><i class="glyphicon glyphicon-remove"></i></button></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <button class="btn btn-block btn-primary" ng-click="addRegime()">Добавить режим регулирования</button>
+        </form>
+    </div>
+    <div class="col-lg-6">
+        <h3>Добавки напряжения на трансформаторах ТП (ответвления ПБВ)</h3>
+        <form name="transformerAdditionsForm">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th title="Порядковый номер (приоритет)">#</th>
+                    <th title="Ответвление первичной обмотки трансфоматора">Ответвление</th>
+                    <th title="Значение добавки напряжения">δU<sub>т</sub>, %</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="addition in additions">
+                    <td>{{ $index+1 }}</td>
+                    <td><input type="text" name="additionName" ng-model="addition.name" required></td>
+                    <td><input type="number" step="0.01" name="additionValue" ng-model="addition.value" required></td>
+                    <td><button class="btn btn-danger btn-xs" ng-click="removeAddition(addition)"><i class="glyphicon glyphicon-remove"></i></button></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <button class="btn btn-block btn-primary" ng-click="addAddition()">Добавить ответвление трансформатора</button>
+        </form>
+    </div>
+</div>

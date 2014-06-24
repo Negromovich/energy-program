@@ -121,8 +121,54 @@ angular.module('energy.controllers', [])
         };
 
         $scope.updateCable = function (edge) {
-            self.updateCable(edge);
+            energy.updateCable(edge);
             energy.clearResults();
+        };
+    }])
+
+
+    .controller('Parameters', ['$scope', '$route', function($scope, $route) {
+        $scope.$parent.currentTab = 'Parameters';
+
+        $scope.params = energy.params;
+
+        $scope.$watch('params', watchListenerClearingData, true);
+
+        $scope.addRegime = function() {
+            $scope.params.transformerRegimes.push({max: 0, min: 0});
+        };
+
+        $scope.removeRegime = function(regime) {
+            for (var i in $scope.params.transformerRegimes) {
+                if ($scope.params.transformerRegimes[i] == regime) {
+                    $scope.params.transformerRegimes.splice(i, 1);
+                }
+            }
+        };
+
+
+
+        $scope.additions = [];
+        for (var i in energy.params.transformerAdditions) {
+            $scope.additions.push({name: i, value: energy.params.transformerAdditions[i]});
+        }
+        $scope.$watch('additions', function() {
+            energy.params.transformerAdditions = {};
+            for (var i in $scope.additions) {
+                energy.params.transformerAdditions[$scope.additions[i].name] = $scope.additions[i].value;
+            }
+        }, true);
+
+        $scope.addAddition = function() {
+            $scope.additions.push({name: '', value: 0});
+        };
+
+        $scope.removeAddition = function(addition) {
+            for (var i in $scope.additions) {
+                if ($scope.additions[i] == addition) {
+                    $scope.additions.splice(i, 1);
+                }
+            }
         };
     }])
 
@@ -216,7 +262,6 @@ angular.module('energy.controllers', [])
 
         if (($scope.branches = getBranches()).length) {
             var results = energy.calcRegimeBranches($scope.branches);
-            console.log('branches results', results);
             _prepareResults(results, $scope);
         }
     }]);

@@ -8,6 +8,7 @@ angular.module('energy', [
         'energy.controllers'
     ]).
     config(['$routeProvider', function ($routeProvider) {
+        $routeProvider.when('/parameters', {templateUrl: 'partials/parameters.html', controller: 'Parameters'});
         $routeProvider.when('/nodes', {templateUrl: 'partials/nodes.html', controller: 'Nodes'});
         $routeProvider.when('/edges', {templateUrl: 'partials/edges.html', controller: 'Edges'});
         $routeProvider.when('/results', {templateUrl: 'partials/results.html', controller: 'Results'});
