@@ -176,13 +176,9 @@ angular.module('energy.controllers', [])
     .controller('Results', ['$scope', function($scope) {
         $scope.$parent.currentTab = 'Results';
 
-        var results = energy.getResults();
+        var results = energy.getResults('main');
 
-        $scope.errors = energy.getErrors();
-
-        if (!$scope.errors.length) {
-            _prepareResults(results, $scope);
-        }
+        _prepareResults(results, $scope);
     }])
 
 
@@ -190,7 +186,7 @@ angular.module('energy.controllers', [])
         $scope.$parent.currentTab = 'Regime';
         $scope.regime = energy.params.defaultRegime;
 
-        var results = energy.calcRegime($scope.regime);
+        var results = energy.getResults('regime', $scope.regime);
 
         _prepareResults(results, $scope);
 
@@ -261,16 +257,25 @@ angular.module('energy.controllers', [])
 
 
         if (($scope.branches = getBranches()).length) {
-            var results = energy.calcRegimeBranches($scope.branches);
+            var results = energy.getResults('branches', $scope.branches);
             _prepareResults(results, $scope);
         }
     }]);
 
-function _prepareResults(results, $scope) {
+function _prepareResults(energyResult, $scope) {
     var nodes = energy.getNodes(false),
         mainNode = energy.getMainNode(),
         edges = energy.getEdges(),
         i, j, mode;
+
+    var results = energyResult.results,
+        errors = energyResult.errors;
+
+    $scope.errors = errors;
+
+    if (errors && errors.length) {
+        return;
+    }
 
     $scope.nodesTable = [];
     $scope.edgesTable = [];

@@ -270,21 +270,32 @@ function getEnergy() {
     };
 
 
-    self.getResults = function () {
+    self.getResults = function (func, param) {
+        switch (func) {
+            case 'main':
+                func = self.calcMain;
+                param = null;
+                break;
+            case 'regime':
+                func = self.calcRegime;
+                break;
+            case 'branches':
+                func = self.calcRegimeBranches;
+                break;
+        }
+
         self.resetErrors();
 
         self.validateNodes();
         self.validateEdges();
 
-        if (self.getErrors().length) { return NaN; }
+        if (self.getErrors().length) { return {results: NaN, errors: self.getErrors()}; }
 
-        var results = self.calc();
+        var results = func(param);
 
-        if (self.getErrors().length) { return NaN; }
+        if (self.getErrors().length) { return {results: NaN, errors: self.getErrors()}; }
 
-        self.results = _.extend(self.results, results);
-
-        return self.results;
+        return {results: results, errors: self.getErrors()};
     };
 
 
@@ -563,8 +574,8 @@ function getEnergy() {
         var valueUnom = self.params.Unom,
             valueUmain = valueUnom * (1 + coefUpercent / 100),
             valueAccuracyMax = 0.000001,
-            valueAccuracyI = 1,
-            valueAccuracyJ = 1,
+            valueAccuracyI = valueAccuracyMax * 1000,
+            valueAccuracyJ = valueAccuracyMax * 1000,
             result = {},
             defMatrixM, defMatrixMb, defMatrixS, defMatrixZ,
             matrixM, matrixMb,
@@ -593,7 +604,7 @@ function getEnergy() {
         for (j = 0; j < limitJ && valueAccuracyJ > valueAccuracyMax; ++j) {
             result.matrixUy = math.multiply(math.ones(defMatrixS.length), result.valueUmain);
             result.matrixUyd = math.zeros(defMatrixS.length);
-            valueAccuracyI = 1;
+            valueAccuracyI = valueAccuracyMax * 1000;
 
             for (i = 0; i < limitI && valueAccuracyI > valueAccuracyMax; ++i) {
                 matrixUdiff = iteration(matrixYy, math.unary(result.matrixS), result.matrixUy, result.valueUmain, matrixYb);
@@ -814,13 +825,15 @@ function getEnergy() {
         return networkMax && networkMin;
     };
 
-    self.calc = function (calcMaxMin, constBranches) {
+    self.calcMain = function (calcMaxMin, constBranches) {
         if (!self.calcBase()) {
             return NaN;
         }
 
         var results,
             regimes = self.params.transformerRegimes;
+
+        calcMaxMin = calcMaxMin !== false;
 
         for (var i in regimes) {
             results = self.calcRegime(regimes[i], constBranches);
@@ -935,7 +948,7 @@ function getEnergy() {
         var results = self.calcRegime(null, branches);
         results.regimes.main.branches = branches;
 
-        var resultsCalc = self.calc(false, branches);
+        var resultsCalc = self.calcMain(false, branches);
 
         self.func.setBranchesConst(NaN);
 
