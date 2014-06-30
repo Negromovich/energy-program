@@ -1,3 +1,10 @@
+/*
+ Energy Program
+ (c) 2014 Aliaksandr Markhvida (http://mal.by)
+ Develop for Belarusian National Technical University, Power Engineering faculty, Electrical Systems department
+ License: MIT
+ */
+
 function getEnergy() {
     var self = {};
 
