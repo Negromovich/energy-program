@@ -10,6 +10,13 @@
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="js/libs/jqplot/jquery.jqplot.min.css" rel="stylesheet">
     <link href="css/app.css" rel="stylesheet">
+
+    <!--[if lt IE 9]>
+        <script src="js/libs/es5-shim.min.js"></script>
+        <script src="js/libs/es5-sham.min.js"></script>
+        <script src="js/libs/html5shiv.min.js"></script>
+        <script src="js/libs/respond.min.js"></script>
+    <![endif]-->
 </head>
 <body>
 
@@ -28,9 +35,7 @@
 
 <div class="container" ng-view></div>
 
-<footer></footer>
-
-<script src="js/libs/jquery-2.1.0.min.js"></script>
+<script src="js/libs/jquery-1.11.1.min.js"></script>
 <script src="js/libs/bootstrap.min.js"></script>
 <script src="js/libs/angular.min.js"></script>
 <script src="js/libs/angular-route.min.js"></script>
@@ -53,7 +58,6 @@
 <script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.pointLabels.min.js"></script>
 <script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.ohlcRenderer.min.js"></script>
 <script type="text/javascript" src="js/libs/jqplot/plugins/jqplot.highlighter.min.js"></script>
-
 
 </body>
 </html>
