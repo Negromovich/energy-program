@@ -1027,7 +1027,11 @@ function getEnergy() {
         for (i in nodes) {
             node = [];
             for (j in nodeKeys) {
-                node.push(nodes[i][nodeKeys[j]]);
+                if (typeof nodes[i][nodeKeys[j]] === 'boolean') {
+                    node.push(nodes[i][nodeKeys[j]] ? 1 : 0);
+                } else {
+                    node.push(nodes[i][nodeKeys[j]]);
+                }
             }
             exportData.nodes.push(node);
         }
@@ -1063,7 +1067,7 @@ function getEnergy() {
             if (values.length > 8) {
                 self.addNode({
                     node: values[0],
-                    main: parseInt(values[1]),
+                    main: parseInt(values[1]) ? true : false,
                     transformer: values[2],
                     Pmax: parseFloat(values[3]),
                     Qmax: parseFloat(values[4]),

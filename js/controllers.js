@@ -266,7 +266,7 @@ function _prepareResults(energyResult, $scope) {
     var nodes = energy.getNodes(false),
         mainNode = energy.getMainNode(),
         edges = energy.getEdges(),
-        i, j, mode;
+        i, j, k, mode;
 
     var results = energyResult.results,
         errors = energyResult.errors;
@@ -322,21 +322,23 @@ function _prepareResults(energyResult, $scope) {
         ticks: nodesName.filter(function(v,k){return nodes[k].Snom > 0;})
     };
 
+    k = 0;
     $scope.deltaChart = {
         data: {max: [], min: []},
         ticks: []
     };
     for (i in nodes) {
         if (nodes[i].Snom > 0) {
+            ++k;
             $scope.deltaChart.data.max.push([
-                i,
+                k,
                 math.round(results.max.network.voltageReal[i] - energy.params.transformerInsensetive, 6),
                 results.voltageDown[i].max.max,
                 results.voltageDown[i].max.min,
                 math.round(results.max.network.voltageReal[i] + energy.params.transformerInsensetive, 6)
             ]);
             $scope.deltaChart.data.min.push([
-                i,
+                k,
                 math.round(results.min.network.voltageReal[i] - energy.params.transformerInsensetive, 6),
                 results.voltageDown[i].min.max,
                 results.voltageDown[i].min.min,
